@@ -43,7 +43,7 @@ RUN patch -p1 < ../ros_melodic_pi.patch
 ## Build buildroot
 USER developer:developer
 WORKDIR /home/developer
-COPY buildroot-2020.02.1.tar.gz ./
+RUN wget https://buildroot.org/downloads/buildroot-2020.02.1.tar.gz
 RUN tar zxvf buildroot-2020.02.1.tar.gz
 WORKDIR buildroot-2020.02.1
 
