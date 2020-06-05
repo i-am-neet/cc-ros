@@ -1,0 +1,170 @@
+diff -Naur ros_catkin_barebones_ws2/src/ros_comm/rosbag/CMakeLists.txt ros_catkin_barebones_ws/src/ros_comm/rosbag/CMakeLists.txt
+--- ros_catkin_barebones_ws2/src/ros_comm/rosbag/CMakeLists.txt	2018-08-06 19:39:03.000000000 +0200
++++ ros_catkin_barebones_ws/src/ros_comm/rosbag/CMakeLists.txt	2019-05-29 09:30:30.138166480 +0200
+@@ -5,12 +5,20 @@
+   set_directory_properties(PROPERTIES COMPILE_OPTIONS "-Wall;-Wextra")
+ endif()
+ 
+-find_package(catkin REQUIRED COMPONENTS rosbag_storage rosconsole roscpp std_srvs topic_tools xmlrpcpp)
+-find_package(Boost REQUIRED COMPONENTS date_time regex program_options filesystem)
+-find_package(BZip2 REQUIRED)
++if(NOT CMAKE_CXX_STANDARD)
++  set(CMAKE_CXX_STANDARD 14)
++endif()
+ 
++find_package(catkin REQUIRED COMPONENTS rosbag_storage rosconsole roscpp std_srvs topic_tools xmlrpcpp cmake_modules)
+ catkin_python_setup()
+ 
++find_package(Boost REQUIRED COMPONENTS date_time regex program_options filesystem)
++find_package(BZip2 REQUIRED)
++find_package(UUID)
++find_package(EXPAT)
++find_package(PkgConfig REQUIRED)
++pkg_check_modules(PCRE REQUIRED libpcre)
++
+ # Support large bags (>2GB) on 32-bit systems
+ add_definitions(-D_FILE_OFFSET_BITS=64)
+ 
+@@ -33,14 +41,14 @@
+ )
+ 
+ add_executable(record src/record.cpp)
+-target_link_libraries(record rosbag)
++target_link_libraries(record rosbag ${UUID_LIBRARIES} ${EXPAT_LIBRARIES} ${PCRE_LIBRARIES} -lgpg-error)
+ 
+ add_executable(play src/play.cpp)
+-target_link_libraries(play rosbag)
++target_link_libraries(play rosbag ${UUID_LIBRARIES} ${EXPAT_LIBRARIES} ${PCRE_LIBRARIES} -lgpg-error)
+ 
+ if(NOT WIN32)
+   add_executable(encrypt src/encrypt.cpp)
+-  target_link_libraries(encrypt ${catkin_LIBRARIES})
++  target_link_libraries(encrypt ${catkin_LIBRARIES} ${UUID_LIBRARIES} ${EXPAT_LIBRARIES} ${PCRE_LIBRARIES} -lgpg-error ${BZIP2_LIBRARIES})
+ endif()
+ 
+ install(DIRECTORY include/${PROJECT_NAME}/
+diff -Naur ros_catkin_barebones_ws2/src/ros_comm/rosbag_storage/CMakeLists.txt ros_catkin_barebones_ws/src/ros_comm/rosbag_storage/CMakeLists.txt
+--- ros_catkin_barebones_ws2/src/ros_comm/rosbag_storage/CMakeLists.txt	2018-08-06 19:39:06.000000000 +0200
++++ ros_catkin_barebones_ws/src/ros_comm/rosbag_storage/CMakeLists.txt	2019-05-28 07:19:17.947741536 +0200
+@@ -6,6 +6,10 @@
+   set_directory_properties(PROPERTIES COMPILE_OPTIONS "-Wall;-Wextra")
+ endif()
+ 
++if(NOT CMAKE_CXX_STANDARD)
++  set(CMAKE_CXX_STANDARD 14)
++endif()
++
+ find_package(console_bridge REQUIRED)
+ find_package(catkin REQUIRED COMPONENTS cpp_common pluginlib roscpp_serialization roscpp_traits rostime roslz4)
+ find_package(Boost REQUIRED COMPONENTS date_time filesystem program_options regex)
+diff -Naur ros_catkin_barebones_ws2/src/ros_comm/rosout/CMakeLists.txt ros_catkin_barebones_ws/src/ros_comm/rosout/CMakeLists.txt
+--- ros_catkin_barebones_ws2/src/ros_comm/rosout/CMakeLists.txt	2018-08-06 19:38:32.000000000 +0200
++++ ros_catkin_barebones_ws/src/ros_comm/rosout/CMakeLists.txt	2019-05-27 14:14:11.009301645 +0200
+@@ -5,14 +5,17 @@
+   set_directory_properties(PROPERTIES COMPILE_OPTIONS "-Wall;-Wextra")
+ endif()
+ 
+-find_package(catkin REQUIRED COMPONENTS roscpp rosgraph_msgs)
++find_package(catkin REQUIRED COMPONENTS roscpp rosgraph_msgs cmake_modules)
+ 
+ catkin_package()
+ 
++find_package(UUID)
++find_package(EXPAT)
++
+ include_directories(${catkin_INCLUDE_DIRS})
+ 
+ add_executable(rosout rosout.cpp)
+-target_link_libraries(rosout ${catkin_LIBRARIES})
++target_link_libraries(rosout ${catkin_LIBRARIES} ${UUID_LIBRARIES} ${EXPAT_LIBRARIES})
+ 
+ install(TARGETS rosout
+   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+diff -Naur ros_catkin_barebones_ws2/src/ros_comm/topic_tools/CMakeLists.txt ros_catkin_barebones_ws/src/ros_comm/topic_tools/CMakeLists.txt
+--- ros_catkin_barebones_ws2/src/ros_comm/topic_tools/CMakeLists.txt	2018-08-06 19:38:40.000000000 +0200
++++ ros_catkin_barebones_ws/src/ros_comm/topic_tools/CMakeLists.txt	2019-05-28 14:44:28.873537246 +0200
+@@ -5,11 +5,15 @@
+   set_directory_properties(PROPERTIES COMPILE_OPTIONS "-Wall;-Wextra")
+ endif()
+ 
+-find_package(catkin COMPONENTS cpp_common message_generation rosconsole roscpp rostime std_msgs xmlrpcpp)
++find_package(catkin COMPONENTS cpp_common message_generation rosconsole roscpp rostime std_msgs xmlrpcpp cmake_modules)
+ catkin_python_setup()
+ 
+-include_directories(include)
+-include_directories(${catkin_INCLUDE_DIRS})
++find_package(Boost)
++find_package(UUID)
++find_package(EXPAT)
++
++include_directories(include ${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
++link_directories(${catkin_LIBRARY_DIRS})
+ 
+ add_service_files(DIRECTORY srv
+   FILES
+@@ -28,32 +32,32 @@
+   INCLUDE_DIRS include
+   LIBRARIES topic_tools
+   CATKIN_DEPENDS message_runtime rosconsole roscpp std_msgs xmlrpcpp
+- )
++)
+ 
+ catkin_add_env_hooks(20.transform SHELLS bash DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/env-hooks)
+ 
+ add_library(topic_tools src/shape_shifter.cpp src/parse.cpp)
+-target_link_libraries(topic_tools ${catkin_LIBRARIES})
++target_link_libraries(topic_tools ${catkin_LIBRARIES} ${Boost_LIBRARIES})
+ 
+ add_executable(switch_mux src/switch_mux.cpp)
+-target_link_libraries(switch_mux topic_tools ${catkin_LIBRARIES})
++target_link_libraries(switch_mux topic_tools ${catkin_LIBRARIES} ${UUID_LIBRARIES} ${EXPAT_LIBRARIES})
+ 
+ add_executable(mux src/mux.cpp)
+-target_link_libraries(mux topic_tools ${catkin_LIBRARIES})
++target_link_libraries(mux topic_tools ${catkin_LIBRARIES} ${UUID_LIBRARIES} ${EXPAT_LIBRARIES})
+ add_dependencies(topic_tools ${${PROJECT_NAME}_EXPORTED_TARGETS})
+ 
+ add_executable(demux src/demux.cpp)
+-target_link_libraries(demux topic_tools ${catkin_LIBRARIES})
++target_link_libraries(demux topic_tools ${catkin_LIBRARIES} ${UUID_LIBRARIES} ${EXPAT_LIBRARIES})
+ add_dependencies(topic_tools ${${PROJECT_NAME}_EXPORTED_TARGETS})
+ 
+ add_executable(relay src/relay.cpp)
+-target_link_libraries(relay topic_tools ${catkin_LIBRARIES})
++target_link_libraries(relay topic_tools ${catkin_LIBRARIES} ${UUID_LIBRARIES} ${EXPAT_LIBRARIES})
+ 
+ add_executable(drop src/drop.cpp)
+-target_link_libraries(drop topic_tools ${catkin_LIBRARIES})
++target_link_libraries(drop topic_tools ${catkin_LIBRARIES} ${UUID_LIBRARIES} ${EXPAT_LIBRARIES})
+ 
+ add_executable(throttle src/throttle.cpp)
+-target_link_libraries(throttle topic_tools ${catkin_LIBRARIES})
++target_link_libraries(throttle topic_tools ${catkin_LIBRARIES} ${UUID_LIBRARIES} ${EXPAT_LIBRARIES})
+ 
+ install(TARGETS topic_tools
+   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+diff -Naur ros_catkin_barebones_ws2/src/rospack/CMakeLists.txt ros_catkin_barebones_ws/src/rospack/CMakeLists.txt
+--- ros_catkin_barebones_ws2/src/rospack/CMakeLists.txt	2019-03-05 01:13:09.000000000 +0100
++++ ros_catkin_barebones_ws/src/rospack/CMakeLists.txt	2019-05-27 09:36:33.253301645 +0200
+@@ -6,10 +6,11 @@
+ set(Python_ADDITIONAL_VERSIONS "${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}")
+ find_package(PythonLibs "${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}" REQUIRED)
+ find_package(TinyXML2 REQUIRED)
++find_package(ZLIB)
+ 
+ catkin_package(
+   INCLUDE_DIRS include
+-  LIBRARIES rospack ${PYTHON_LIBRARIES}
++  LIBRARIES rospack ${PYTHON_LIBRARIES} ${ZLIB_LIBRARIES}
+   DEPENDS Boost TinyXML2
+ )
+ 
+@@ -29,7 +30,7 @@
+   src/rospack_cmdline.cpp
+   src/utils.cpp
+ )
+-target_link_libraries(rospack ${TinyXML2_LIBRARIES} ${Boost_LIBRARIES} ${PYTHON_LIBRARIES})
++target_link_libraries(rospack ${TinyXML2_LIBRARIES} ${Boost_LIBRARIES} ${PYTHON_LIBRARIES} ${ZLIB_LIBRARIES})
+ 
+ add_executable(rospackexe src/rospack_main.cpp)
+ # Set the name, and make it a "global" executable
