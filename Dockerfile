@@ -28,7 +28,8 @@ RUN apt-get update && apt-get install -y \
     g++ make gawk libncurses5-dev wget python unzip bc cpio rsync \
     bash-completion \
     python-rosdep python-rosinstall-generator python-wstool python-rosinstall \
-    python-pip
+    python-pip \
+    libssl-dev
 
 RUN pip install empy
 
@@ -51,43 +52,43 @@ COPY rpi3-aarch64-buildroot-config .config
 RUN make toolchain
 ENV PATH=/home/developer/buildroot-2020.02.1/output/host/bin/:$PATH
 
-## LIBS for building ROS
+### LIBS for building ROS
+##
+##  console_bridge
+##
+#USER root
+#WORKDIR /home/developer/cb_ws/
+#RUN git clone https://github.com/ros/console_bridge
+#RUN mkdir build && cd build && \
+#    cmake -DCMAKE_INSTALL_PREFIX=../install ../console_bridge && \
+#    make && make install && \
+#    cp -a /home/developer/cb_ws/install/include/* /home/developer/buildroot-2020.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/ && \
+#    cp -a /home/developer/cb_ws/install/lib/* /home/developer/buildroot-2020.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/lib/
+##
+##  poco
+##
+#WORKDIR /home/developer/poco_ws/
+#RUN git clone -b master https://github.com/pocoproject/poco.git
+#RUN cd poco && ./configure --prefix=/home/developer/poco_ws/install && \
+#    make && make install && \
+#    cp -a /home/developer/poco_ws/install/include/* /home/developer/buildroot-2020.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/ && \
+#    cp -a /home/developer/poco_ws/install/lib/* /home/developer/buildroot-2020.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/lib/ && \
+#    cp -a /home/developer/poco_ws/install/bin/* /home/developer/buildroot-2020.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/bin
+##
+##  boost
+##
+#WORKDIR /home/developer/boost_ws/
+#RUN wget https://dl.bintray.com/boostorg/release/1.65.1/source/boost_1_65_1.tar.bz2 && \
+#    tar --bzip2 -xf boost_1_65_1.tar.bz2
+#RUN cd boost_1_65_1 && ./bootstrap.sh --prefix=../install && \
+#    sed -i '12s/using gcc/using gcc : arm : aarch64-linux-gcc/g' project-config.jam && \
+#    ./b2 install && \
+#    cp -a /usr/local/lib/libboost_* /home/developer/buildroot-2020.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/lib/ && \
+#    cp -a /usr/local/include/boost /home/developer/buildroot-2020.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/
 #
-#  console_bridge
 #
-USER root
-WORKDIR /home/developer/cb_ws
-RUN git clone https://github.com/ros/console_bridge
-RUN mkdir build && cd build
-RUN cmake -DCMAKE_INSTALL_PREFIX=../install ../console_bridge
-RUN make && make install && \
-    cp -a /home/developer/cb_ws/install/include/* /home/developer/buildroot-2020.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/ && \
-    cp -a /home/developer/cb_ws/install/lib/* /home/developer/buildroot-2020.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/lib/
+### Build ROS
+#COPY ros_melodic_toolchain_cmake.cmake /home/developer/ros_pi/toolchain.cmake
+#WORKDIR /home/developer/ros_pi/ros_catkin_ws/
+##RUN ./src/catkin/bin/catkin_make_isolated --install -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_TOOLCHAIN_FILE=/home/developer/ros_pi/toolchain.cmake
 #
-#  poco
-#
-WORKDIR /home/developer/poco_ws
-RUN git clone -b master https://github.com/pocoproject/poco.git
-RUN cd poco && ./configure --prefix=/home/developer/poco_ws/install
-RUN make && make install && \
-    cp -a /home/developer/poco_ws/install/include/* /home/developer/buildroot-2020.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/ && \
-    cp -a /home/developer/poco_ws/install/lib/* /home/developer/buildroot-2020.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/lib/ && \
-    cp -a /home/developer/poco_ws/install/bin/* /home/developer/buildroot-2020.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/bin
-#
-#  boost
-#
-WORKDIR /home/developer/boost_ws
-RUN wget https://dl.bintray.com/boostorg/release/1.65.1/source/boost_1_65_1.tar.bz2 && \
-    tar --bzip2 -xf boost_1_65_1.tar.bz2
-RUN cd boost_1_65_1 && ./bootstrap.sh --prefix=../install
-RUN sed -i '12s/using gcc/using gcc : arm : aarch64-linux-gcc/g' project-config.jam
-RUN ./b2 install
-RUN cp -a /usr/local/lib/libboost_* /home/developer/buildroot-2020.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/lib/ && \
-    cp -a /usr/local/include/boost /home/developer/buildroot-2020.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/
-
-
-## Build ROS
-COPY ros_melodic_toolchain_cmake.cmake /home/developer/ros_pi/toolchain.cmake
-WORKDIR /home/developer/ros_pi/ros_catkin_ws/
-RUN ./src/catkin/bin/catkin_make_isolated --install -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_TOOLCHAIN_FILE=/home/developer/ros_pi/toolchain.cmake
-
